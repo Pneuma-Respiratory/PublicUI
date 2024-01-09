@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <executable name="dist/default/production\BlueSky5.3_PIC18F57Q43_128.X.production.hex">
+    <memory name="program">
+      <units>bytes</units>
+      <length>131072</length>
+      <used>22393</used>
+      <free>108679</free>
+    </memory>
+    <memory name="data">
+      <units>bytes</units>
+      <length>8192</length>
+      <used>4074</used>
+      <free>4118</free>
+    </memory>
+  </executable>
+</project>

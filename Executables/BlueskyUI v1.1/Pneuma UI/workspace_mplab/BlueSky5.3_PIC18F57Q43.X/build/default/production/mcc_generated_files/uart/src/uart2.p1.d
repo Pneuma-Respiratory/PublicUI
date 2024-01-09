@@ -1,0 +1,21 @@
+build/default/production/mcc_generated_files/uart/src/uart2.p1:  \
+mcc_generated_files/uart/src/uart2.c  \
+mcc_generated_files/uart/src/../uart2.h  \
+mcc_generated_files/uart/src/../../system/system.h  \
+mcc_generated_files/uart/src/../../system/../system/config_bits.h  \
+mcc_generated_files/uart/src/../../system/../system/clock.h  \
+mcc_generated_files/uart/src/../../system/../system/pins.h  \
+mcc_generated_files/uart/src/../../system/../adc/adcc.h  \
+mcc_generated_files/uart/src/../../system/../clkref/clkref.h  \
+mcc_generated_files/uart/src/../../system/../cwg/cwg1.h  \
+mcc_generated_files/uart/src/../../system/../fvr/fvr.h  \
+mcc_generated_files/uart/src/../../system/../nco/nco1.h  \
+mcc_generated_files/uart/src/../../system/../nvm/nvm.h  \
+mcc_generated_files/uart/src/../../system/../timer/tmr1.h  \
+mcc_generated_files/uart/src/../../system/../timer/timer_interface.h  \
+mcc_generated_files/uart/src/../../system/../uart/uart2.h  \
+mcc_generated_files/uart/src/../../system/../uart/uart3.h  \
+mcc_generated_files/uart/src/../uart_drv_interface.h  \
+mcc_generated_files/uart/src/../uart_types.h  \
+mcc_generated_files/uart/src/../../system/../system/watchdog.h  \
+mcc_generated_files/uart/src/../../system/../system/interrupt.h 

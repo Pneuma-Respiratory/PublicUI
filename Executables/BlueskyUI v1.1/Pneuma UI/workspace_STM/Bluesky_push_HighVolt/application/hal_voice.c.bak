@@ -1,0 +1,266 @@
+/***********************************************************************************
+  Filename:     hal_voice.c
+
+  Description:  
+                
+
+***********************************************************************************/
+
+/***********************************************************************************
+* INCLUDES
+*/
+#include "cmsis_os.h"
+#include "stm32l4xx.h"
+#include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_gpio.h"
+
+#include "hal_board_cfg.h"
+
+#include "hal_voice.h"
+
+/***********************************************************************************
+ * CONSTANTS
+ */
+
+/***********************************************************************************
+ * MACROS
+ */
+
+/***********************************************************************************
+* GLOBAL VARIABLES
+*/
+uint8_t voice_start = false;
+
+/***********************************************************************************
+* LOCAL VARIABLES
+*/
+static uint8_t shift_Data = 0xA3;
+static uint8_t high_Cnt = 0;
+static uint8_t interrupt_Cnt = 0;
+
+/***********************************************************************************
+* LOCAL FUNCTIONS
+*/
+
+/***********************************************************************************
+* GLOBAL FUNCTIONS
+*/
+extern void HAL_TIM1_Start( void );
+extern void HAL_TIM1_Stop( void );
+
+/***********************************************************************************
+* LOCAL FUNCTIONS
+*/
+
+
+/***********************************************************************************
+ *  @fn   
+ *  @brief    
+ *  @param  
+ *            
+ *  @return   
+ */
+
+void HalVoice_Init( void )
+{
+    // GPIO Input, Pull up
+    //GPIO_setAsInputPinWithPullUpResistor( VOICE_BUSY_PORT, VOICE_BUSY_PIN );
+    //GPIO_setAsOutputPin( VOICE_SDA_PORT, VOICE_SDA_PIN );
+    //GPIO_setOutputHighOnPin( VOICE_SDA_PORT, VOICE_SDA_PIN );
+}
+     
+void Voice_Init( void )
+{
+#if 1
+
+
+#else
+
+    //Start timer in continuous mode sourced by ACLK
+    Timer_A_clearTimerInterrupt( TIMER_A2_BASE );
+    
+    Timer_A_initUpModeParam param = {0};
+    param.clockSource = TIMER_A_CLOCKSOURCE_ACLK;
+    param.clockSourceDivider = TIMER_A_CLOCKSOURCE_DIVIDER_5;            // 5MHz/5 = 1MHz
+    param.timerPeriod = 500;                                             // 500us
+    param.timerInterruptEnable_TAIE = TIMER_A_TAIE_INTERRUPT_ENABLE;
+    param.captureCompareInterruptEnable_CCR0_CCIE = TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE;
+    param.timerClear = TIMER_A_DO_CLEAR;
+    param.startTimer = true;
+    Timer_A_initUpMode( TIMER_A2_BASE, &param );
+#endif
+}
+
+/***********************************************************************************
+ *  @fn   
+ *  @brief    
+ *  @param    
+ *  @return   1: IDLE, 0: BUSY
+ */ 
+uint8_t Voice_Busy( void )
+{
+#if 1
+	return HAL_GPIO_ReadPin( VOICE_BUSY_PORT, VOICE_BUSY_PIN );
+
+#else
+    // GPIO Input, Pull up
+    GPIO_setAsInputPinWithPullUpResistor( VOICE_BUSY_PORT, VOICE_BUSY_PIN );
+    GPIO_setAsOutputPin( VOICE_SDA_PORT, VOICE_SDA_PIN );
+    GPIO_setOutputHighOnPin( VOICE_SDA_PORT, VOICE_SDA_PIN );
+    
+    return GPIO_getInputPinValue( VOICE_BUSY_PORT, VOICE_BUSY_PIN );
+#endif
+}
+
+void Voice_Command( uint16_t cmd, uint8_t volume )
+{
+    uint8_t data, vol_change, vol_data;
+    
+    if ( cmd == 0x00 ){
+  //  if (1){
+        return;
+    }
+    data = (uint8_t)(cmd >> 8);
+    if ( data != 0x00 ){
+        interrupt_Cnt = 0;
+        high_Cnt = 0;
+        shift_Data = data;
+        Voice_Init();
+        voice_start = true;
+        while( interrupt_Cnt < 41 );
+        // Volume
+        vol_data = 0xEF;
+        vol_change = false;
+        switch( (uint8_t)cmd ){
+            case 0x06:
+            case 0x0A:  
+            case 0x0D: vol_change = true;   break;
+        }
+        if ( vol_change ){
+            switch( volume ){
+                case 0x00:  vol_data = 0xE0;  break;
+                case 0x01:  vol_data = 0xE2;  break;
+                case 0x02:  vol_data = 0xE6;  break;
+                case 0x03:  vol_data = 0xEA;  break;
+                case 0x04:  vol_data = 0xEF;  break;
+                case 0x05:  
+                default:    vol_data = 0xEF;  break;
+            }
+        }
+// vol_data = 0xE2;       
+	// Mute
+        if ( (vol_data == 0xE0) && ( (uint8_t)cmd != 0x0D ) ){
+            // return;
+        } 
+        if ( data == 0xFC ){
+            interrupt_Cnt = 0;
+            high_Cnt = 0;
+            shift_Data = vol_data;
+            Voice_Init();
+            voice_start = true;
+            while( interrupt_Cnt < 41 );
+        }
+    }
+    
+    data = (uint8_t)cmd;
+    if ( data != 0x00 ){
+        interrupt_Cnt = 0;
+        high_Cnt = 0;
+        shift_Data = data;
+        Voice_Init();
+        voice_start = true;
+        while( interrupt_Cnt < 41 );
+    }
+    
+}
+
+void Voice_Volume( uint8_t volume )
+{  
+    uint8_t vol_data;
+
+    switch( volume ){
+        case 0x00:  vol_data = 0xE0;  break;
+        case 0x01:  vol_data = 0xE2;  break;
+        case 0x02:  vol_data = 0xE6;  break;
+        case 0x03:  vol_data = 0xEA;  break;
+        case 0x04:  vol_data = 0xEF;  break;
+        case 0x05:  
+        default:    vol_data = 0xEF;  break;
+    }
+      
+    interrupt_Cnt = 0;
+    high_Cnt = 0;
+    shift_Data = vol_data;
+    Voice_Init();
+    voice_start = true;
+    while( interrupt_Cnt < 41 );
+}
+
+void Voice_Write( void )
+{
+    if (interrupt_Cnt < 8){
+        interrupt_Cnt++;
+        GPIO_setOutputLowOnPin( VOICE_SDA_PORT, VOICE_SDA_PIN );
+        return;
+    }
+        
+    if ( high_Cnt > 0){
+        high_Cnt--;
+    }
+    if ( interrupt_Cnt >= 40 ){      // 40 = 8 + 32,  8x500us as sync bit, 8x(3+1)x500us as a byte
+        // Stop timer
+  // ST      Timer_A_stop( TIMER_A2_BASE );
+    	HAL_TIM1_Stop();
+
+    	voice_start = false;
+        //$$ interrupt_Cnt = 0;
+        high_Cnt = 0;
+        shift_Data = 0;
+        interrupt_Cnt++;
+        GPIO_setOutputHighOnPin( VOICE_SDA_PORT, VOICE_SDA_PIN );
+  // ST      __delay_cycles(6000);           // 300us
+        LL_mDelay(1);
+        return;
+    }
+    
+    if ( (interrupt_Cnt % 4) == 0 ){
+        GPIO_setOutputHighOnPin( VOICE_SDA_PORT, VOICE_SDA_PIN );
+        if ( shift_Data & 0x01 ){
+            high_Cnt  = 3;
+        }
+        else{
+            high_Cnt = 1;
+        }
+        shift_Data >>= 1;
+    }
+    else{
+        if ( high_Cnt == 0){
+            GPIO_setOutputLowOnPin( VOICE_SDA_PORT, VOICE_SDA_PIN );
+        }
+    }
+    interrupt_Cnt++;
+}
+
+#if 0
+#pragma vector=TIMER2_A1_VECTOR 
+__interrupt void TIMER1_A2_ISR (void)
+{
+    //Any access, read or write, of the TAIV register automatically resets the
+    //highest "pending" interrupt flag
+    switch ( __even_in_range(TA2IV,14) ){
+        case  0: break;                          //No interrupt
+        case  2: break;                          //CCR1 not used
+        case  4: break;                          //CCR2 not used
+        case  6: break;                          //CCR3 not used
+        case  8: break;                          //CCR4 not used
+        case 10: break;                          //CCR5 not used
+        case 12: break;                          //CCR6 not used
+        case 14:
+                 //Toggle P1.0 for test				 // overflow
+                 //GPIO_toggleOutputOnPin( GPIO_PORT_P1, GPIO_PIN0 );
+                 Voice_Write();
+                 break;
+        default: break;
+    }
+}
+#endif
